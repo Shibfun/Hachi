@@ -7,7 +7,7 @@
     <link rel="icon" type="image/png" href="https://shibarium.fun/images/favicon.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        {
+        * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
@@ -248,7 +248,7 @@
         }
         .action-box .action-button .spinner {
             display: none;
-            Ocho: 2px solid #FFF;
+            border: 2px solid #FFF;
             border-top: 2px solid transparent;
             border-radius: 50%;
             width: 14px;
@@ -396,9 +396,7 @@
             blockExplorerUrls: ["https://shibariumscan.io"]
         };
         const contractAbi = [
-            {"inputs":[{"internalType":"address","nameитая
-
-System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"isValidToken","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"stakeToken","outputs":[],"stateMutability":"nonpayable","type":"function"},
@@ -407,7 +405,7 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
             {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"cancelVote","outputs":[],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[],"name":"claimRewards","outputs":[],"stateMutability":"nonpayable","type":"function"},
             {"inputs":[{"internalType":"address","name":"_user","type":"address"}],"name":"getPendingRewards","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-            {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"getNodeVotes","outputs":[{"internalType":"uint256 ColombianType":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"getNodeVotes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"getRewardPerUnitPerBlock","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[{"internalType":"address","name":"_user","type":"address"}],"name":"getUserStake","outputs":[{"internalType":"address[]","name":"tokens","type":"address[]"},{"internalType":"uint256[]","name":"amounts","type":"uint256[]"},{"internalType":"uint256","name":"userStartBlock","type":"uint256"},{"internalType":"uint256","name":"totalReward","type":"uint256"}],"stateMutability":"view","type":"function"},
             {"inputs":[],"name":"getTotalStaked","outputs":[{"internalType":"address[]","name":"tokens","type":"address[]"},{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},
@@ -431,7 +429,7 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
             { name: "LUISA", address: "0x0cCD687CC6F8461170336D8e8cf46A39313DEab9", logo: "https://www.woofswap.finance/image/tokens/luisa.png" },
             { name: "SHIPA", address: "0x632d1FF1fB27d88EDeDB90e70bFC094D7932A0ad", logo: "https://woofswap.finance/image/tokens/shipa.png" }
         ];
-        const hachiLogo = "https://woofswap.finance/image/tokens/hachi.png";
+        const hachiLogo = "https://woofswap.finance/image/tokens/hachi.png"; // 请确认HACHI logo URL
         const maxAllowance = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
         function shortenAddress(address) {
@@ -529,31 +527,43 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
                         totalReward: stakeData.totalReward
                     };
                     for (const node of nodes) {
-                        const votes = await contract.methods.userVotes(account, node.address).call();
-                        userVotes[node.address] = web3.utils.fromWei(votes, "ether");
-                        const minStake = await contract.methods.minStakeMultiple(node.address).call();
-                        minStakeMultiples[node.address] = web3.utils.fromWei(minStake, "ether");
-                        const tokenContract = new web3.eth.Contract(erc20Abi, node.address);
-                        const balance = await tokenContract.methods.balanceOf(account).call();
-                        lpBalances[node.address] = web3.utils.fromWei(balance, "ether");
+                        try {
+                            const votes = await contract.methods.userVotes(account, node.address).call();
+                            userVotes[node.address] = web3.utils.fromWei(votes, "ether");
+                            const minStake = await contract.methods.minStakeMultiple(node.address).call();
+                            minStakeMultiples[node.address] = web3.utils.fromWei(minStake, "ether");
+                            const tokenContract = new web3.eth.Contract(erc20Abi, node.address);
+                            const balance = await tokenContract.methods.balanceOf(account).call();
+                            lpBalances[node.address] = web3.utils.fromWei(balance, "ether");
+                        } catch (e) {
+                            console.warn(`Error fetching data for ${node.name}: ${e.message}`);
+                            minStakeMultiples[node.address] = "0";
+                            lpBalances[node.address] = "0";
+                            userVotes[node.address] = "0";
+                        }
                     }
                 }
                 const nodeData = await Promise.all(nodes.map(async node => {
-                    const votes = await contract.methods.getNodeVotes(node.address).call();
-                    const reward = await contract.methods.getRewardPerUnitPerBlock(node.address).call();
-                    return {
-                        name: node.name,
-                        votes: web3.utils.fromWei(votes, "ether"),
-                        reward: web3.utils.fromWei(reward, "ether")
-                    };
+                    try {
+                        const votes = await contract.methods.getNodeVotes(node.address).call();
+                        const reward = await contract.methods.getRewardPerUnitPerBlock(node.address).call();
+                        return {
+                            name: node.name,
+                            votes: web3.utils.fromWei(votes, "ether"),
+                            reward: web3.utils.fromWei(reward, "ether")
+                        };
+                    } catch (e) {
+                        console.warn(`Error fetching node data for ${node.name}: ${e.message}`);
+                        return { name: node.name, votes: "0", reward: "0" };
+                    }
                 }));
                 const tokenBalanceDisplay = parseFloat(web3.utils.fromWei(tokenBalance, "ether")).toFixed(2);
                 const pendingRewards = parseFloat(web3.utils.fromWei(userStakes.totalReward, "ether")).toFixed(2);
                 card.dataset.tokenBalance = tokenBalance;
                 let tokenCards = nodes.map(node => {
                     const lpBalance = parseFloat(lpBalances[node.address] || "0").toFixed(2);
-                    const minStake = parseFloat(minStakeMultiples[node.address]).toFixed(2);
-                    const userVote = parseFloat(userVotes[node.address]).toFixed(2);
+                    const minStake = parseFloat(minStakeMultiples[node.address] || "1").toFixed(2);
+                    const userVote = parseFloat(userVotes[node.address] || "0").toFixed(2);
                     const stakedAmount = userStakes.tokens.find(t => t.toLowerCase() === node.address.toLowerCase())
                         ? parseFloat(web3.utils.fromWei(userStakes.amounts[userStakes.tokens.indexOf(userStakes.tokens.find(t => t.toLowerCase() === node.address.toLowerCase()))], "ether")).toFixed(2)
                         : "0.00";
@@ -566,11 +576,11 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
                             <div class="action-box">
                                 <h5>Stake</h5>
                                 <div class="balance-row">
-                                    <span>LP Balance</span>
-                                    <span>${lpBalance} LP</span>
+                                    <span>Balance</span>
+                                    <span>${lpBalance} ${node.name}</span>
                                 </div>
                                 <input type="number" class="stake-amount" placeholder="0.00" step="0.01" min="0">
-                                <p class="stake-note">Note: Rewards per ${minStake} LP portion.</p>
+                                <p class="stake-note">Note: Rewards per ${minStake} ${node.name} portion.</p>
                                 <div class="percentage-buttons stake-percentages">
                                     <button data-percentage="25">25%</button>
                                     <button data-percentage="50">50%</button>
@@ -583,7 +593,7 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
                                 <h5>Unstake</h5>
                                 <div class="balance-row">
                                     <span>Staked</span>
-                                    <span>${stakedAmount} LP</span>
+                                    <span>${stakedAmount} ${node.name}</span>
                                 </div>
                                 <button class="action-button unstake-button" ${stakedAmount > 0 ? '' : 'disabled'}>Unstake</button>
                             </div>
@@ -627,7 +637,7 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
                     </div>
                     <div class="card-content">
                         <h4>HACHI Staking & Voting</h4>
-                        <p class="description">Stake LP tokens, vote for nodes, and earn HACHI rewards on Shibarium. Rewards are calculated based on complete portions of the minimum stake.</p>
+                        <p class="description">Stake tokens, vote for nodes, and earn HACHI rewards on Shibarium. Rewards are calculated based on complete portions of the minimum stake.</p>
                     </div>
                     <div class="action-section">
                         <div class="token-card-grid">${tokenCards}</div>
@@ -666,9 +676,9 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
             const stakeData = await contract.methods.getUserStake(account).call();
             const stakedIndex = stakeData.tokens.findIndex(t => t.toLowerCase() === tokenAddress.toLowerCase());
             const stakedAmount = stakedIndex >= 0 ? web3.utils.fromWei(stakeData.amounts[stakedIndex], "ether") : "0";
-            tokenCard.querySelector(".balance-row span:last-child").innerText = `${parseFloat(web3.utils.fromWei(lpBalance, "ether")).toFixed(2)} LP`;
+            tokenCard.querySelector(".balance-row span:last-child").innerText = `${parseFloat(web3.utils.fromWei(lpBalance, "ether")).toFixed(2)} ${tokenCard.querySelector("h6").innerText}`;
             tokenCard.querySelector(".unstake-button").disabled = parseFloat(stakedAmount) <= 0;
-            tokenCard.querySelector(".unstake-button").parentElement.querySelector(".balance-row span:last-child").innerText = `${parseFloat(stakedAmount).toFixed(2)} LP`;
+            tokenCard.querySelector(".unstake-button").parentElement.querySelector(".balance-row span:last-child").innerText = `${parseFloat(stakedAmount).toFixed(2)} ${tokenCard.querySelector("h6").innerText}`;
             tokenCard.querySelector(".cancel-vote-button").disabled = parseFloat(web3.utils.fromWei(userVotes, "ether")) <= 0;
             tokenCard.querySelector(".vote-info").innerText = `Votes: ${parseFloat(web3.utils.fromWei(userVotes, "ether")).toFixed(2)} HACHI`;
         }
@@ -721,8 +731,8 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
                     });
                 });
 
-                stakeButton.addEventListener("click", async () => await stakeLP(tokenCard, contract));
-                unstakeButton.addEventListener("click", async () => await unstakeLP(tokenCard, contract));
+                stakeButton.addEventListener("click", async () => await stakeToken(tokenCard, contract));
+                unstakeButton.addEventListener("click", async () => await unstakeToken(tokenCard, contract));
                 voteButton.addEventListener("click", async () => await vote(tokenCard, contract));
                 cancelVoteButton.addEventListener("click", async () => await cancelVote(tokenCard, contract));
 
@@ -759,7 +769,7 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
             button.disabled = !account || amount <= 0 || (type === "vote" && amount < 1) || (type === "stake" && amount < minStake);
         }
 
-        async function stakeLP(tokenCard, contract) {
+        async function stakeToken(tokenCard, contract) {
             if (!web3 || !account) {
                 showStatus("Please connect wallet.", true);
                 return;
@@ -772,12 +782,12 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
                 return;
             }
             if (amount < minStake) {
-                showStatus(`Amount must be at least ${minStake.toFixed(2)} LP tokens.`, true);
+                showStatus(`Amount must be at least ${minStake.toFixed(2)} ${tokenCard.querySelector("h6").innerText}.`, true);
                 return;
             }
             const portions = Math.floor(amount / minStake);
             if (amount % minStake !== 0) {
-                showStatus(`Warning: Only ${portions * minStake} LP will count toward rewards.`, true);
+                showStatus(`Warning: Only ${portions * minStake} ${tokenCard.querySelector("h6").innerText} will count toward rewards.`, true);
                 tokenCard.querySelector(".stake-note").classList.add("warning");
             } else {
                 tokenCard.querySelector(".stake-note").classList.remove("warning");
@@ -792,7 +802,7 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
             const tokenContract = new web3.eth.Contract(erc20Abi, tokenAddress);
             const balance = await tokenContract.methods.balanceOf(account).call();
             if (web3.utils.toBN(balance).lt(web3.utils.toBN(amountWei))) {
-                showStatus("Insufficient LP token balance.", true);
+                showStatus(`Insufficient ${tokenCard.querySelector("h6").innerText} balance.`, true);
                 return;
             }
             const isValid = await contract.methods.isValidToken(tokenAddress).call();
@@ -822,7 +832,7 @@ System: sender","name":"account","type":"address"}],"name":"balanceOf","outputs"
             }
         }
 
-        async function unstakeLP(tokenCard, contract) {
+        async function unstakeToken(tokenCard, contract) {
             if (!web3 || !account) {
                 showStatus("Please connect wallet.", true);
                 return;
