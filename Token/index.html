@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HACHI Staking Statistics</title>
+    <link rel="icon" type="image/png" href="https://shibarium.fun/images/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #121212;
+            color: #E0E0E0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .header h1 {
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            font-weight: 700;
+            color: #FF8C00;
+            letter-spacing: 1px;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            justify-content: center;
+        }
+        .card {
+            background: #1E1E1E;
+            border: 1px solid #333;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: #252525;
+            border-bottom: 1px solid #333;
+        }
+        .card-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            flex-grow: 1;
+            color: #E0E0E0;
+        }
+        .card-header .copy-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            position: relative;
+        }
+        .card-header .copy-button img {
+            width: 18px;
+            height: 18px;
+            filter: invert(1);
+        }
+        .card-header .copy-button .tooltip {
+            visibility: hidden;
+            background: #FF8C00;
+            color: #FFF;
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            position: absolute;
+            top: -30px;
+            right: 0;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .card-header .copy-button.copied .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .card-content {
+            padding: 16px;
+            flex-grow: 1;
+        }
+        .card-content h4 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #FF8C00;
+        }
+        .card-content p.description {
+            font-size: 0.9rem;
+            color: #B0B0B0;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        .node-info {
+            padding: 16px;
+        }
+        .node-info table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            color: #E0E0E0;
+        }
+        .node-info th, .node-info td {
+            padding: 6px;
+            border: 1px solid #333;
+            text-align: left;
+        }
+        .node-info th {
+            background: #252525;
+            color: #FF8C00;
+        }
+        .global-spinner {
+            border: 4px solid #FF8C00;
+            border-top: 4px solid transparent;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 24px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status {
+            font-size: 0.9rem;
+            color: #FF8C00;
+            text-align: center;
+            margin: 12px 0;
+        }
+        .footer {
+            font-size: 0.8rem;
+            color: #B0B0B0;
+            text-align: center;
+            margin-top: auto;
+            padding: 16px;
+        }
+        .footer a {
+            color: #FF8C00;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .footer a:hover {
+            color: #FFA500;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            .card {
+                max-width: 100%;
+            }
+            .card-header h3 {
+                font-size: 1rem;
+            }
+            .card-content h4 {
+                font-size: 1.2rem;
+            }
+            .card-content p.description {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>HACHI Staking Statistics</h1>
+    </div>
+    <div id="searchStatus" class="status"></div>
+    <div class="global-spinner" id="globalSpinner"></div>
+    <div class="container">
+        <div class="card" id="actionCard"></div>
+    </div>
+    <div class="footer">
+        Powered by <a href="https://shibarium.shib.io/" target="_blank">Shibarium</a> | ShibClub © 2025
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.7.0/dist/web3.min.js"></script>
+    <script>
+        const contractAddress = "0xb36DF3E1F38DE869Be46CaD054013384336Cd8F2";
+        const shibarium = {
+            chainId: "0x6d",
+            chainName: "Shibarium",
+            nativeCurrency: { name: "BONE", symbol: "BONE", decimals: 18 },
+            rpcUrls: ["https://rpc.shibrpc.com", "https://www.shibrpc.com"],
+            blockExplorerUrls: ["https://shibariumscan.io"]
+        };
+        const contractAbi = [
+            {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"isValidToken","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"stakeToken","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"unstakeToken","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"_amount","type":"uint256"}],"name":"vote","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"cancelVote","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[],"name":"claimRewards","outputs":[],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"address","name":"_user","type":"address"}],"name":"getPendingRewards","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"getNodeVotes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"getRewardPerUnitPerBlock","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"_user","type":"address"}],"name":"getUserStake","outputs":[{"internalType":"address[]","name":"tokens","type":"address[]"},{"internalType":"uint256[]","name":"amounts","type":"uint256[]"},{"internalType":"uint256","name":"userStartBlock","type":"uint256"},{"internalType":"uint256","name":"totalReward","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"getTotalStaked","outputs":[{"internalType":"address[]","name":"tokens","type":"address[]"},{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"minStakeMultiple","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"","type":"address"}],"name":"userVotes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"getRemainingRewards","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+        ];
+        const erc20Abi = [
+            {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+            {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+            {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+        ];
+        const nodes = [
+            { name: "WOOF", address: "0xD0daa7B6ff1B40d3cc6F0B2Cf7E85cB993D1c834", logo: "https://woofswap.finance/image/tokens/WOOF.png" },
+            { name: "DAMN", address: "0xeCe898EdCc0AF91430603175F945D8de75291c70", logo: "https://woofswap.finance/image/tokens/DAMN.png" },
+            { name: "CHIKA", address: "0x61CFA29261d8151D39244b8FfCf8DFd2f9DF3839", logo: "https://woofswap.finance/image/tokens/ChikaLogo.png" },
+            { name: "FEED", address: "0xe9Cb2D7ADC24Fc59FE00D6C0A0669BDF16805Fe0", logo: "https://woofswap.finance/image/tokens/feed.png" },
+            { name: "WOW", address: "0x8f4b11d923BbAA6206f3Dd3ff84e8e31bafB49b7", logo: "https://woofswap.finance/image/tokens/wow.png" },
+            { name: "LUISA", address: "0x0cCD687CC6F8461170336D8e8cf46A39313DEab9", logo: "https://www.woofswap.finance/image/tokens/luisa.png" },
+            { name: "SHIPA", address: "0x632d1FF1fB27d88EDeDB90e70bFC094D7932A0ad", logo: "https://woofswap.finance/image/tokens/shipa.png" },
+            { name: "TOYS", address: "0xB820c8a74c8E4059661460C414821bC5820470D8", logo: "https://woofswap.finance/image/tokens/toys.png" },
+            { name: "SHIBS", address: "0xB9Ae1d4e474CC154F48e5C2f0559Eb3A78Ad1F09", logo: "https://woofswap.finance/image/tokens/shibss.png" },
+            { name: "CANNED", address: "0x5d63C604803BbF7919953b73c89309B5CBcc227a", logo: "https://www.woofswap.finance/image/tokens/CANNED.png" },
+            { name: "DUDU", address: "0x9f56cba9c3d4cd9f3d7b899ea0ff8292fe8264a8", logo: "https://woofswap.finance/image/tokens/dudu.png" },
+            { name: "MSGA", address: "0x5c4f0350420B9a571FcE6eF856f70136BCC229bd", logo: "https://woofswap.finance/image/tokens/msga.png" },
+            { name: "PIKA", address: "0x0b4FD6288b6d32171CC515bfFC9340026F56A358", logo: "https://woofswap.finance/image/tokens/PIKA.png" },
+            { name: "GUY", address: "0x52296893764380cdf10316eC9F64b581004C1Fd1", logo: "https://woofswap.finance/image/tokens/guy.png" },
+            { name: "SIFE", address: "0x4DFAfaE0a2BEfA606C7Cbc8cf99792C42fd2Aa72", logo: "https://woofswap.finance/image/tokens/sife.png" },
+            { name: "PNUTSHIB", address: "0xdE22A4F6C94507898442465d32a03871E4dc11Eb", logo: "https://woofswap.finance/image/tokens/pnutshib.png" }
+        ];
+
+        function showStatus(message, isError = false) {
+            const status = document.getElementById("searchStatus");
+            status.innerText = message;
+            status.style.color = isError ? "#FF4444" : "#FF8C00";
+            setTimeout(() => { status.innerText = ""; }, 5000);
+        }
+
+        async function tryInitializeWeb3() {
+            for (const rpc of shibarium.rpcUrls) {
+                try {
+                    const web3 = new Web3(rpc);
+                    await web3.eth.getBlockNumber();
+                    return web3;
+                } catch (e) {
+                    console.warn(`RPC ${rpc} failed: ${e.message}`);
+                }
+            }
+            return null;
+        }
+
+        async function loadActionCard() {
+            const status = document.getElementById("searchStatus");
+            const card = document.getElementById("actionCard");
+            const spinner = document.getElementById("globalSpinner");
+            try {
+                status.innerText = "Loading data...";
+                spinner.style.display = "block";
+                const web3 = await tryInitializeWeb3();
+                if (!web3) {
+                    showStatus("Failed to connect to Shibarium.", true);
+                    return;
+                }
+                const contract = new web3.eth.Contract(contractAbi, contractAddress);
+                const stakeData = await contract.methods.getTotalStaked().call();
+                const tokenData = await Promise.all(nodes.map(async node => {
+                    try {
+                        const tokenContract = new web3.eth.Contract(erc20Abi, node.address);
+                        const totalSupply = await tokenContract.methods.totalSupply().call();
+                        const stakedIndex = stakeData.tokens.findIndex(t => t.toLowerCase() === node.address.toLowerCase());
+                        const stakedAmount = stakedIndex >= 0 ? web3.utils.fromWei(stakeData.amounts[stakedIndex], "ether") : "0";
+                        const supply = web3.utils.fromWei(totalSupply, "ether");
+                        const percentage = supply > 0 ? (parseFloat(stakedAmount) / parseFloat(supply) * 100).toFixed(2) : "0.00";
+                        return {
+                            name: node.name,
+                            staked: parseFloat(stakedAmount).toFixed(2),
+                            supply: parseFloat(supply).toFixed(2),
+                            percentage
+                        };
+                    } catch (e) {
+                        console.warn(`Error fetching data for ${node.name}: ${e.message}`);
+                        return { name: node.name, staked: "0.00", supply: "0.00", percentage: "0.00" };
+                    }
+                }));
+                const nodeTable = tokenData.map(data => `
+                    <tr>
+                        <td>${data.name}</td>
+                        <td>${data.staked}</td>
+                        <td>${data.supply}</td>
+                        <td>${data.percentage}%</td>
+                    </tr>
+                `).join("");
+                card.innerHTML = `
+                    <div class="card-header">
+                        <h3>HACHI Contract</h3>
+                        <button class="copy-button" data-address="${contractAddress}">
+                            <img src="https://img.icons8.com/ios-filled/16/000000/contract.png" alt="Copy Contract">
+                            <span class="tooltip">Copied Contract</span>
+                        </button>
+                    </div>
+                    <div class="card-content">
+                        <h4>HACHI Staking Statistics</h4>
+                        <p class="description">Overview of token staking on Shibarium, including total staked amounts, circulating supply, and staking percentage.</p>
+                    </div>
+                    <div class="node-info">
+                        <h4>Token Statistics</h4>
+                        <table>
+                            <tr>
+                                <th>Token</th>
+                                <th>Staked Amount</th>
+                                <th>Circulating Supply</th>
+                                <th>Staking Percentage</th>
+                            </tr>
+                            ${nodeTable}
+                        </table>
+                    </div>
+                `;
+                card.querySelectorAll(".copy-button").forEach(button => {
+                    button.addEventListener("click", () => {
+                        navigator.clipboard.writeText(button.dataset.address).then(() => {
+                            button.classList.add("copied");
+                            setTimeout(() => button.classList.remove("copied"), 1000);
+                        }).catch(() => showStatus("Failed to copy address.", true));
+                    });
+                });
+                showStatus("Data loaded successfully!");
+            } catch (e) {
+                showStatus(`Failed to load data: ${e.message}`, true);
+            } finally {
+                spinner.style.display = "none";
+            }
+        }
+
+        window.addEventListener("load", async () => {
+            if (!window.location.protocol.includes("http")) {
+                showStatus("Please run via server (e.g., 'npx serve').", true);
+                return;
+            }
+            await loadActionCard();
+        });
+    </script>
+</body>
+</html>
